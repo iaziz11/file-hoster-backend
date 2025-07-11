@@ -22,7 +22,7 @@ const serviceAccount = JSON.parse(
   fs.readFileSync(process.env.FIREBASE_KEY_PATH, "utf-8")
 );
 const s3 = new S3Client({
-  region: "us-east-2",
+  region: process.env.AWS_REGION,
 });
 
 admin.initializeApp({
@@ -36,15 +36,15 @@ const getS3ReadStream = async (Bucket, Key) => {
   const fullKey = "uploads/" + Key;
   const command = new GetObjectCommand({ Bucket, Key: fullKey });
   const response = await s3.send(command);
-  return response.Body; // this is a Readable stream
+  return response.Body;
 };
 
 app.post("/upload", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
 
   const params = {
-    Bucket: "mpower-app-files", // Replace with your bucket name
-    Key: "uploads/" + req.body.fileId, // Use original file name or customize
+    Bucket: "mpower-app-files",
+    Key: "uploads/" + req.body.fileId,
     Body: req.file.buffer,
     ContentType: req.file.mimetype,
   };
@@ -72,7 +72,7 @@ app.post("/download/folder", async (req, res) => {
 
   for (const fileTuple of fileList) {
     const s3Stream = await getS3ReadStream("mpower-app-files", fileTuple[0]);
-    archive.append(s3Stream, { name: fileTuple[1] }); // keeps folder structure
+    archive.append(s3Stream, { name: fileTuple[1] });
   }
   archive.finalize();
 });
