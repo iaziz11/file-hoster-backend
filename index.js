@@ -32,6 +32,24 @@ admin.initializeApp({
 app.use(express.json());
 app.use(cors());
 
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized: No token provided" });
+  }
+
+  const idToken = authHeader.split("Bearer ")[1];
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.user = decodedToken;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Unauthorized: Invalid token" });
+  }
+};
+
 const getS3ReadStream = async (Bucket, Key) => {
   const fullKey = "uploads/" + Key;
   const command = new GetObjectCommand({ Bucket, Key: fullKey });
@@ -39,7 +57,8 @@ const getS3ReadStream = async (Bucket, Key) => {
   return response.Body;
 };
 
-app.post("/upload", upload.single("file"), async (req, res) => {
+//add auth
+app.post("/upload", authenticate, upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
 
   const params = {
@@ -58,7 +77,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-app.post("/download/folder", async (req, res) => {
+//add auth
+app.post("/download/folder", authenticate, async (req, res) => {
   if (!req.body?.files) res.status(400).send("No files specified");
   const fileList = req.body.files;
   const folderName = req.body.folderName;
@@ -77,7 +97,8 @@ app.post("/download/folder", async (req, res) => {
   archive.finalize();
 });
 
-app.get("/download/:fileKey", async (req, res) => {
+//add auth
+app.get("/download/:fileKey", authenticate, async (req, res) => {
   const { fileKey } = req.params;
 
   const command = new GetObjectCommand({
@@ -104,7 +125,8 @@ app.get("/document", (req, res) => {
   });
 });
 
-app.delete("/delete/:fileKey", async (req, res) => {
+//add auth
+app.delete("/delete/:fileKey", authenticate, async (req, res) => {
   const { fileKey } = req.params;
   const params = {
     Bucket: "mpower-app-files",
@@ -121,7 +143,8 @@ app.delete("/delete/:fileKey", async (req, res) => {
   }
 });
 
-app.delete("/deleteUser/:userId", async (req, res) => {
+//add auth
+app.delete("/deleteUser/:userId", authenticate, async (req, res) => {
   const { userId } = req.params;
   if (!userId) res.status(400).send("No user specified");
   try {
