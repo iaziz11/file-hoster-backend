@@ -30,6 +30,23 @@ admin.initializeApp({
 });
 
 app.use(express.json());
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:80",
+  "https://d2oci8gd63g7dj.cloudfront.net/",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+};
+// app.use(cors(corsOptions));
 app.use(cors());
 
 const authenticate = async (req, res, next) => {
@@ -57,7 +74,6 @@ const getS3ReadStream = async (Bucket, Key) => {
   return response.Body;
 };
 
-//add auth
 app.post("/upload", authenticate, upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).send("No file uploaded.");
 
@@ -77,7 +93,6 @@ app.post("/upload", authenticate, upload.single("file"), async (req, res) => {
   }
 });
 
-//add auth
 app.post("/download/folder", authenticate, async (req, res) => {
   if (!req.body?.files) res.status(400).send("No files specified");
   const fileList = req.body.files;
@@ -97,7 +112,6 @@ app.post("/download/folder", authenticate, async (req, res) => {
   archive.finalize();
 });
 
-//add auth
 app.get("/download/:fileKey", authenticate, async (req, res) => {
   const { fileKey } = req.params;
 
@@ -115,17 +129,27 @@ app.get("/download/:fileKey", authenticate, async (req, res) => {
   }
 });
 
-app.get("/document", (req, res) => {
-  console.log("sending file over");
-  res.sendFile(path.resolve(__dirname, "test.docx"), (err) => {
-    if (err) {
-      console.error("Error sending file:", err);
-      res.status(err.status).end();
-    }
+app.get("/document/:fileKey", async (req, res) => {
+  const { fileKey } = req.params;
+  const command = new GetObjectCommand({
+    Bucket: "mpower-app-files",
+    Key: "uploads/" + fileKey,
   });
+
+  try {
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 86400 });
+    res.json({ url: signedUrl });
+  } catch (err) {
+    console.error("Url error:", err);
+    res.status(500).send("Failed to generate presigned url.");
+  }
 });
 
-//add auth
+app.post("/document/:fileKey", (req, res) => {
+  console.log(req.body);
+  res.status(200).send("good");
+});
+
 app.delete("/delete/:fileKey", authenticate, async (req, res) => {
   const { fileKey } = req.params;
   const params = {
@@ -143,7 +167,6 @@ app.delete("/delete/:fileKey", authenticate, async (req, res) => {
   }
 });
 
-//add auth
 app.delete("/deleteUser/:userId", authenticate, async (req, res) => {
   const { userId } = req.params;
   if (!userId) res.status(400).send("No user specified");
