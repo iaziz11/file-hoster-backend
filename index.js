@@ -147,6 +147,7 @@ app.get("/document/:fileKey", async (req, res) => {
 
 app.post("/document/:fileKey", async (req, res) => {
   const payload = req.body;
+  console.log(payload);
   const fileUrl = payload?.url;
   const { fileKey } = req.params;
   if (req.body.status === 6) {
