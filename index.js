@@ -147,7 +147,7 @@ app.get("/document/:fileKey", async (req, res) => {
 
 app.post("/document/:fileKey", (req, res) => {
   console.log(req.body);
-  res.status(200).send("good");
+  res.status(200).json({ error: 0 });
 });
 
 app.delete("/delete/:fileKey", authenticate, async (req, res) => {
