@@ -137,7 +137,7 @@ app.get("/document/:fileKey", async (req, res) => {
   });
 
   try {
-    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 86400 });
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: 120 });
     res.json({ url: signedUrl });
   } catch (err) {
     console.error("Url error:", err);
@@ -150,7 +150,7 @@ app.post("/document/:fileKey", async (req, res) => {
   console.log(payload);
   const fileUrl = payload?.url;
   const { fileKey } = req.params;
-  if (req.body.status === 6) {
+  if (req.body.status === 6 || req.body.status === 2) {
     try {
       const response = await fetch(fileUrl);
       if (!response.ok)
@@ -158,16 +158,22 @@ app.post("/document/:fileKey", async (req, res) => {
 
       const buffer = await response.buffer();
 
+      const getCommand = new GetObjectCommand({
+        Bucket: "mpower-app-files",
+        Key: "uploads/" + fileKey,
+      });
+      const getResponse = await s3.send(getCommand);
+      const fileType = getResponse.ContentType;
+
       // Upload to S3
-      await s3
-        .putObject({
-          Bucket: "mpower-app-files", // your bucket name
-          Key: fileKey,
-          Body: buffer,
-          ContentType:
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        })
-        .promise();
+      const putCommand = new PutObjectCommand({
+        Bucket: "mpower-app-files",
+        Key: "uploads/" + fileKey,
+        Body: buffer,
+        ContentType: fileType,
+      });
+
+      await s3.send(putCommand);
 
       console.log(`File saved successfully`);
 
