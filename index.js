@@ -145,8 +145,38 @@ app.get("/document/:fileKey", async (req, res) => {
   }
 });
 
-app.post("/document/:fileKey", (req, res) => {
-  console.log(req.body);
+app.post("/document/:fileKey", async (req, res) => {
+  const payload = req.body;
+  const fileUrl = payload?.url;
+  const { fileKey } = req.params;
+  if (req.body.status === 6) {
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok)
+        throw new Error(`Failed to download file: ${response.statusText}`);
+
+      const buffer = await response.buffer();
+
+      // Upload to S3
+      await s3
+        .putObject({
+          Bucket: "mpower-app-files", // your bucket name
+          Key: fileKey,
+          Body: buffer,
+          ContentType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        })
+        .promise();
+
+      console.log(`File saved successfully`);
+
+      return res.status(200).json({ error: 0 });
+    } catch (error) {
+      console.error("Error saving file to S3:", error);
+      return res.status(500).json({ error: 1, message: error.message });
+    }
+  }
+
   res.status(200).json({ error: 0 });
 });
 
