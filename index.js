@@ -156,8 +156,8 @@ app.post("/document/:fileKey", async (req, res) => {
       if (!response.ok)
         throw new Error(`Failed to download file: ${response.statusText}`);
 
-      const buffer = await response.buffer();
-
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
       const getCommand = new GetObjectCommand({
         Bucket: "mpower-app-files",
         Key: "uploads/" + fileKey,
