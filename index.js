@@ -177,6 +177,12 @@ app.post("/document/:fileKey", async (req, res) => {
 
       console.log(`File saved successfully`);
 
+      const db = admin.firestore();
+
+      await db.collection("files").doc(key).update({
+        dateUploaded: new Date.now(),
+      });
+
       return res.status(200).json({ error: 0 });
     } catch (error) {
       console.error("Error saving file to S3:", error);
