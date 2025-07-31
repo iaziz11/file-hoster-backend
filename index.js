@@ -179,7 +179,7 @@ app.post("/document/:fileKey", async (req, res) => {
 
       const db = admin.firestore();
 
-      await db.collection("files").doc(key).update({
+      await db.collection("files").doc(fileKey).update({
         dateUploaded: new Date.now(),
       });
 
