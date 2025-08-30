@@ -106,8 +106,12 @@ app.post("/download/folder", authenticate, async (req, res) => {
   archive.pipe(res);
 
   for (const fileTuple of fileList) {
-    const s3Stream = await getS3ReadStream("mpower-app-files", fileTuple[0]);
-    archive.append(s3Stream, { name: fileTuple[1] });
+    try {
+      const s3Stream = await getS3ReadStream("mpower-app-files", fileTuple[0]);
+      archive.append(s3Stream, { name: fileTuple[1] });
+    } catch (e) {
+      console.error("Custom error: " + e.message);
+    }
   }
   archive.finalize();
 });
